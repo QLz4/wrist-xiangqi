@@ -1,1 +1,0 @@
-07f156f64f05be875911f9f4fdf167639343aac54cd27b486604b54fedc687b7  com.bandgame.xiangqi.debug.1.0.5.rpk

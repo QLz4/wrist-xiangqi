@@ -367,7 +367,7 @@ export default {
   },
   sendDebug(event) {
     if (!debug || !connection || !ready) return;
-    const data = {app: 'com.bandgame.xiangqi', version: '1.0.5', event: event, mode: mode, level:level, cleared:cleared.slice(),
+    const data = {app: 'com.bandgame.xiangqi', version: '1.0.6', event: event, mode: mode, level:level, cleared:cleared.slice(),
       turn: game.turn === 1 ? 'red' : 'black', moves: game.moves.length, result: game.result, board: game.board.slice()};
     try { connection.send({data: data, fail: () => console.log('[xiangqi] debug send failed')}); }
     catch (e) { console.log('[xiangqi] debug unavailable'); }

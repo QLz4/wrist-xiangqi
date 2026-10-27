@@ -1,11 +1,12 @@
 import {createSearch, legalMoves, inCheck, evaluate, key} from './engine.js'
+import {createMasterSearch} from './master-ai.js'
 
 export const LEVELS = [
   {id:1, name:'入门', depth:1, nodes:0, budget:350, quietDepth:0, noise:32, detail:'轻量判断吃子与危险，适合练习。'},
   {id:2, name:'初学', depth:2, nodes:700, budget:650, quietDepth:0, noise:12, detail:'计算你的回应，减少直接送子。'},
   {id:3, name:'进阶', depth:3, nodes:2200, budget:1000, quietDepth:0, noise:6, detail:'继续推演攻防，避开重复走子。'},
   {id:4, name:'挑战', depth:4, nodes:5500, budget:1500, quietDepth:1, noise:2, detail:'延伸吃子与应将，判断交换得失。'},
-  {id:5, name:'决胜', depth:5, nodes:12000, budget:2200, quietDepth:2, noise:0, detail:'本作最高难度，更深推演与攻防。'}
+  {id:5, name:'决胜', depth:8, nodes:32000, budget:3000, quietDepth:6, noise:0, detail:'主变例搜索与局面缓存，加强攻防。'}
 ];
 const AI_VALUES = [0,20000,120,120,300,600,320,90], MATE = 100000;
 
@@ -14,6 +15,7 @@ const AI_VALUES = [0,20000,120,120,300,600,320,90], MATE = 100000;
 export function createOpponentSearch(board, turn, options) {
   options = options || {};
   const level = Math.max(1, Math.min(5, options.level || 1)), config = LEVELS[level-1];
+  if(level===5)return createMasterSearch(board,turn,options);
   const now = options.now || Date.now, started = now(), random = options.random || Math.random;
   const budget = options.budgetMs === undefined ? config.budget : Math.max(0, options.budgetMs);
   const nodeLimit = options.maxNodes === undefined ? config.nodes : Math.max(0, options.maxNodes);

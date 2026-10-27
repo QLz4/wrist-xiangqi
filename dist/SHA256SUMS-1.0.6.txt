@@ -1,0 +1,1 @@
+ca760ae276e1ec24a96f733608afa1153075d660eee5489a89534da4f186217c  com.bandgame.xiangqi.release.1.0.6.rpk

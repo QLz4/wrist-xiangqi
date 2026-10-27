@@ -18,7 +18,7 @@ function harness({deferSave=false,show=true,saved='',failAI=false,splash=false}=
   const p=context.definition; Object.assign(p,p.private); p.onInit();if(show)p.onShow();
   if(!splash)p.finishSplash();
   function tick(){const [id,fn]=timers.entries().next().value||[];if(fn){timers.delete(id);fn();}}
-  function drain(){let n=0;while(timers.size){tick();assert(n++<200);}}
+  function drain(){let n=0;while(timers.size){tick();assert(n++<5000);}}
   return {p,timers,writes,messages,connection,tick,drain,keep,context,delays};
 }
 function human(p){p.select(54);p.select(45);p.confirmMove();}
@@ -160,4 +160,12 @@ test('leaving or destroying during startup clears its timer and stale callbacks 
   h.p.onShow();stale();assert.equal(h.p.screen,'board');assert.equal(h.p.moveCount,0);
   const other=harness({splash:true});const late=[...other.timers.values()][0];
   other.p.onDestroy();late();assert.equal(other.timers.size,0);assert.equal(other.p.moveCount,0);
+});
+
+test('fifth-level deep thinking can be paused and resumed without a late or duplicate move',()=>{
+  const h=harness();h.p.chooseLevel(5);h.p.startNew();human(h.p);
+  for(let i=0;i<20;i++)h.tick();assert.equal(h.p.moveCount,1);
+  const stale=[...h.timers.values()][0];h.p.openMenu();assert.equal(h.timers.size,0);
+  stale();assert.equal(h.p.moveCount,1);h.p.resume();h.drain();
+  assert.equal(h.p.moveCount,2);assert.match(h.p.heading,/红方走/);
 });

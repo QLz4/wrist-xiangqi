@@ -5,6 +5,7 @@ let template=ux.match(/<template>([\s\S]*?)<\/template>/)[1];
 let css=ux.match(/<style>([\s\S]*?)<\/style>/)[1];
 css=css.replace("/common/board.png",'data:image/png;base64,'+fs.readFileSync(path.join(root,'src/common/board.png')).toString('base64'));
 const engine=fs.readFileSync(path.join(root,'src/common/engine.js'),'utf8').replace(/export /g,'');
+const master=fs.readFileSync(path.join(root,'src/common/master-ai.js'),'utf8').replace(/^import .*$/gm,'').replace(/export /g,'');
 const ai=fs.readFileSync(path.join(root,'src/common/ai.js'),'utf8').replace(/^import .*$/gm,'').replace(/export /g,'');
 css += '\n#watch .piece { border-style:solid; }';
 const controller=ux.match(/<script>([\s\S]*?)<\/script>/)[1].replace(/^import .*$/gm,'').replace('export default','const definition =');
@@ -13,6 +14,7 @@ const html=String.raw`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><m
 ${css}</style><aside><small>小米手环 10 Pro · M2551B1</small><h1>腕上象棋</h1><p>完整 9×10 棋盘。<br>选棋子 → 点落点 → 确认落子。</p><p>五关人机 / 双人轮流<br>自由选关 · 悔棋 · 自动续局</p><small>这是复用应用界面与逻辑的浏览器预览，<br>不能代替手环上的实际运行验证。<br>调试消息在这里仅输出到浏览器控制台。</small></aside><main id="watch"></main><template id="source">${template}</template>
 <script>
 ${engine}
+${master}
 ${ai}
 const storage={get(o){setTimeout(()=>{try{o.success(localStorage.getItem(o.key)||'');}catch(e){o.fail();}},0);},set(o){try{localStorage.setItem(o.key,o.value);o.success();}catch(e){o.fail();}}};
 const interconnect={instance(){return {send(o){console.log('[preview interconnect]',o.data);}};}};

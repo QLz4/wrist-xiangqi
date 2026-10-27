@@ -1,14 +1,17 @@
 {
   "name": "wrist-xiangqi",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "private": true,
   "scripts": {
-    "build": "aiot build",
+    "build": "npm run release",
     "test": "node --test tests/*.test.mjs",
-    "preview": "node tools/make-preview.cjs"
+    "preview": "node tools/make-preview.cjs",
+    "build:debug": "aiot build",
+    "release": "node tools/release-signing.cjs && aiot release --drop-console true",
+    "signing:init": "node tools/release-signing.cjs --init"
   },
   "devDependencies": {
     "aiot-toolkit": "2.0.5",
-    "@aiot-toolkit/jsc": "1.0.5"
+    "@aiot-toolkit/jsc": "1.0.3"
   }
 }
