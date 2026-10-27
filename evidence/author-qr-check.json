@@ -1,0 +1,24 @@
+{
+  "wechat": {
+    "size": [
+      294,
+      294
+    ],
+    "modules": 41,
+    "pixelsPerModule": 6,
+    "payloadMatchesSource": true,
+    "payloadSha256": "f3726b95e52af4f564450c9b33e11acadf722b07453c507156c77bb748e275ef",
+    "previewScreenshotMatchesSource": true
+  },
+  "alipay": {
+    "size": [
+      294,
+      294
+    ],
+    "modules": 41,
+    "pixelsPerModule": 6,
+    "payloadMatchesSource": true,
+    "payloadSha256": "3755f6cf0017e170011894688ded7ac7dc7c281ab4e99344dc7f20433a22910c",
+    "previewScreenshotMatchesSource": true
+  }
+}

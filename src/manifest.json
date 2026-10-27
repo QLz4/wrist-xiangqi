@@ -1,0 +1,14 @@
+{
+  "package": "com.bandgame.xiangqi",
+  "name": "腕上象棋",
+  "versionName": "1.0.5",
+  "versionCode": 6,
+  "minPlatformVersion": 1200,
+  "minAPILevel": 1,
+  "icon": "/common/icon.png",
+  "deviceTypeList": ["watch"],
+  "features": [{"name":"system.storage"},{"name":"system.interconnect"},{"name":"system.brightness"}],
+  "config": {"logLevel":"log","designWidth":336},
+  "router": {"entry":"pages/index","pages":{"pages/index":{"component":"index"}}},
+  "display": {"backgroundColor":"#121b19"}
+}

@@ -1,0 +1,14 @@
+{
+  "name": "wrist-xiangqi",
+  "version": "1.0.5",
+  "private": true,
+  "scripts": {
+    "build": "aiot build",
+    "test": "node --test tests/*.test.mjs",
+    "preview": "node tools/make-preview.cjs"
+  },
+  "devDependencies": {
+    "aiot-toolkit": "2.0.5",
+    "@aiot-toolkit/jsc": "1.0.5"
+  }
+}

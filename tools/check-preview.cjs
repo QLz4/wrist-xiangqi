@@ -1,0 +1,113 @@
+const fs=require('node:fs'), path=require('node:path'),assert=require('node:assert/strict');
+const {pathToFileURL}=require('node:url');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const root=path.resolve(__dirname,'..');
+(async()=>{
+ const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL || 'chrome'});
+ const page=await browser.newPage({viewport:{width:1000,height:650},deviceScaleFactor:1});
+ const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE ERROR',e.stack);});
+ async function fits(name) {
+  const geometry=await page.locator('#watch').evaluate(w=>{
+   const frame=w.getBoundingClientRect(), top=frame.top+w.clientTop,left=frame.left+w.clientLeft;
+   return {panels:w.querySelector('.page').children.length,scroll:w.scrollTop,
+    height:w.querySelector('.page').scrollHeight,
+    outside:[...w.querySelectorAll('input,text,img')].filter(e=>{
+     const r=e.getBoundingClientRect();return r.top<top-1||r.bottom>top+480+1||r.left<left-1||r.right>left+336+1;
+    }).map(e=>e.value||e.textContent)};
+  });
+  assert.equal(geometry.panels,1,name+' must have only one active panel');
+  assert.equal(geometry.scroll,0,name+' must not need scrolling');
+  assert(geometry.height<=480,name+' must fit 480px');
+  assert.deepEqual(geometry.outside,[],name+' controls must be inside the screen');
+ }
+ await page.addInitScript(()=>{window.bootStarted=performance.now();});
+ await page.goto(pathToFileURL(path.join(root,'preview/index.html')).href);
+ assert.equal(await page.evaluate(()=>chessPage.screen),'splash');
+ await fits('startup');
+ assert.equal(await page.locator('.splash-credit').textContent(),'QLz4 开发');
+ assert.equal(await page.locator('.splash-avatar').evaluate(e=>getComputedStyle(e).animationDuration),'2s');
+ await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector('.splash-avatar')).opacity)>0.95);
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/startup.png')});
+ await page.waitForFunction(()=>document.querySelector('.heading')?.textContent.includes('红方走'),null,{timeout:5000}).catch(async e=>{console.log(await page.locator('#watch').innerHTML());await browser.close();throw e;});
+ const startupMs=await page.evaluate(()=>performance.now()-window.bootStarted);
+ assert(startupMs>=1900&&startupMs<4500,'startup should transition after about two seconds');
+ assert.equal(await page.locator('.piece').count(),90);
+ await fits('board');
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/board.png')});
+ await page.locator('.piece').nth(54).click(); await page.locator('.piece').nth(45).click();
+ assert.equal(await page.evaluate(()=>chessPage.moveCount),0);
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/confirm.png')});
+ await page.getByRole('button',{name:'落子',exact:true}).click();
+ await page.waitForFunction(()=>chessPage.moveCount===2);
+ await page.getByRole('button',{name:'菜单',exact:true}).click();
+ await fits('menu');
+ await page.getByRole('button',{name:'悔棋',exact:true}).click();
+ assert.equal(await page.evaluate(()=>chessPage.moveCount),0);
+ await page.getByRole('button',{name:'菜单',exact:true}).click();
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/menu.png')});
+ await page.getByRole('button',{name:'作者主页',exact:true}).click();
+ await fits('author');
+ assert.equal(await page.locator('.author-name').textContent(),'作者：QLz4 开发');
+ await page.waitForFunction(()=>document.querySelector('.author-avatar').complete&&document.querySelector('.author-avatar').naturalWidth===144);
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/author.png')});
+ for(const [channel,label] of [['wechat','微信支持'],['alipay','支付宝支持']]) {
+  await page.getByRole('button',{name:label,exact:true}).click();
+  await fits('support '+channel);
+  await page.waitForFunction(()=>document.querySelector('.support-qr').complete&&document.querySelector('.support-qr').naturalWidth===294);
+  await page.locator('#watch').screenshot({path:path.join(root,'preview/support-'+channel+'.png')});
+  await page.getByRole('button',{name:'返回作者主页',exact:true}).click();
+ }
+ await page.getByRole('button',{name:'返回菜单',exact:true}).click();
+ assert.equal(await page.evaluate(()=>chessPage.moveCount),0);
+ await page.getByRole('button',{name:'玩法与规则',exact:true}).click();
+ await fits('rules');
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/rules.png')});
+ const overflow=await page.locator('#watch .paragraph').evaluate(e=>({scroll:e.scrollHeight,client:e.clientHeight}));
+ assert(overflow.scroll<=overflow.client);
+ for(let i=0;i<4;i++){await page.getByRole('button',{name:'下一页',exact:true}).click();await fits('rules '+(i+2));}
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/rules-last.png')});
+ await page.getByRole('button',{name:'返回',exact:true}).click();
+ await page.getByRole('button',{name:'人机关卡 · 选择难度',exact:true}).click();
+ await fits('levels');
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/levels.png')});
+ await page.getByRole('button',{name:'5 · 决胜',exact:true}).click();
+ await fits('new game');
+ await page.getByRole('button',{name:'开始新局',exact:true}).click();
+ assert.equal(await page.evaluate(()=>chessPage.modeText),'人机·第5关');
+ assert.equal(await page.locator('img.black').count(),0);
+ await page.getByRole('button',{name:'菜单',exact:true}).click();
+ await page.getByRole('button',{name:'双人新局 · 轮流操作',exact:true}).click();
+ await page.getByRole('button',{name:'开始新局',exact:true}).click();
+ await page.waitForFunction(()=>[...document.querySelectorAll('img.black')].length===16&&[...document.querySelectorAll('img.black')].every(e=>e.complete&&e.naturalWidth===28));
+ assert.equal(await page.locator('img.red').count(),0);
+ assert.equal(await page.locator('.piece').count(),90);
+ assert.equal(await page.locator('.black').first().evaluate(e=>getComputedStyle(e).transform),'none');
+ await fits('local board');
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/local.png')});
+ await page.locator('.piece').nth(54).click();await page.locator('.piece').nth(45).click();
+ await page.getByRole('button',{name:'落子',exact:true}).click();
+ await page.locator('.piece').nth(27).click();
+ assert.match(await page.locator('.piece').nth(27).getAttribute('class'),/selected/);
+ await page.locator('.piece').nth(36).click();await page.getByRole('button',{name:'落子',exact:true}).click();
+ assert.match(await page.locator('.piece').nth(36).getAttribute('src'),/black-7.png/);
+ assert.equal(await page.locator('.piece').nth(27).textContent(),'');
+ await page.getByRole('button',{name:'菜单',exact:true}).click();
+ await page.getByRole('button',{name:'悔棋',exact:true}).click();
+ assert.match(await page.locator('.piece').nth(27).getAttribute('src'),/black-7.png/);
+ await page.reload();
+ await page.waitForFunction(()=>chessPage.moveCount===1&&document.querySelectorAll('img.black').length===16);
+ await fits('restored local game');
+ await page.evaluate(()=>document.querySelector('img.black').dispatchEvent(new Event('error')));
+ assert.equal(await page.locator('img.black').count(),0);
+ assert.equal(await page.locator('text.black').count(),16);
+ assert.equal(await page.locator('text.black').first().textContent(),'车');
+ await page.evaluate(()=>{mode='ai';level=1;game.result='red';chessPage.showResult();});
+ await fits('stage result');
+ await page.locator('#watch').screenshot({path:path.join(root,'preview/result.png')});
+ await page.getByRole('button',{name:'挑战第2关',exact:true}).click();
+ assert.equal(await page.evaluate(()=>chessPage.modeText),'人机·第2关');
+ await fits('next stage board');
+ assert.deepEqual(errors,[]);
+ console.log('PASS: board, menu, 5 rules pages, levels, new-game and result panels fit 336x480 without scrolling; legal AI reply, stage progression and local-only black rotation; no browser script errors.');
+ await browser.close();
+})().catch(e=>{console.error(e);process.exit(1);});

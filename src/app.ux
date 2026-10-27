@@ -1,0 +1,9 @@
+<script>
+import brightness from '@system.brightness'
+export default {
+  onCreate() { console.info('[xiangqi] app 1.0.5'); },
+  onShow() { try { brightness.setKeepScreenOn({keepScreenOn: true}); } catch (e) {} },
+  onHide() { try { brightness.setKeepScreenOn({keepScreenOn: false}); } catch (e) {} },
+  onDestroy() { try { brightness.setKeepScreenOn({keepScreenOn: false}); } catch (e) {} }
+}
+</script>

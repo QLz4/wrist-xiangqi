@@ -1,0 +1,14 @@
+{
+  "scenario": "Initial red pawn 54 -> 45; black to move",
+  "environment": "Desktop Node.js; not a watch benchmark",
+  "iterations": 200,
+  "old": {
+    "averageComputeMs": 2.733,
+    "averageSlices": 44
+  },
+  "current": {
+    "averageComputeMs": 0.064,
+    "averageSlices": 6
+  },
+  "computeSpeedup": 42.7
+}

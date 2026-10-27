@@ -1,0 +1,423 @@
+<template>
+  <div class="page">
+    <div class="splash" if="{{screen === 'splash'}}">
+      <image class="splash-avatar splash-fade" src="/common/author-avatar.png" />
+      <text class="splash-title splash-fade">腕上象棋</text>
+      <text class="splash-credit splash-fade">QLz4 开发</text>
+      <text class="splash-note splash-fade">献给热爱象棋的你</text>
+    </div>
+    <div class="board-view" if="{{screen === 'board'}}">
+      <text class="heading">{{heading}}</text>
+      <div class="board">
+        <div class="rank" for="row in rows" tid="id">
+          <block for="cell in row.cells" tid="id">
+            <image if="{{cell.image}}" class="{{cell.cls}}" src="{{cell.image}}" onclick="select(cell.id)" onerror="glyphError" />
+            <text if="{{!cell.image}}" class="{{cell.cls}}" onclick="select(cell.id)">{{cell.text}}</text>
+          </block>
+        </div>
+      </div>
+      <text class="hint">{{hint}}</text>
+      <div class="actions">
+        <input class="action primary" type="button" value="{{confirmText}}" onclick="confirmMove" />
+        <input class="action" type="button" value="取消" onclick="cancelSelect" />
+        <input class="action" type="button" value="菜单" onclick="openMenu" />
+      </div>
+    </div>
+    <div class="panel" if="{{screen === 'menu'}}">
+      <text class="title">腕上象棋</text>
+      <text class="subtitle">{{modeText}} · {{moveCount}}步 · {{keepText}}</text>
+      <input class="wide primary menu-item" type="button" value="继续棋局" onclick="resume" />
+      <input class="wide menu-item" type="button" value="人机关卡 · 选择难度" onclick="showLevels" />
+      <input class="wide menu-item" type="button" value="双人新局 · 轮流操作" onclick="askNew('local')" />
+      <input class="wide menu-item" type="button" value="悔棋" onclick="takeBack" />
+      <input class="wide menu-item" type="button" value="玩法与规则" onclick="showRules" />
+      <input class="wide menu-item" type="button" value="作者主页" onclick="showAuthor" />
+      <input class="wide menu-item" type="button" value="{{debugText}}" onclick="toggleDebug" />
+      <text class="small">{{saveText}}</text>
+    </div>
+    <div class="panel author-panel" if="{{screen === 'author'}}">
+      <text class="title">作者主页</text>
+      <image class="author-avatar" src="/common/author-avatar.png" />
+      <text class="author-name">作者：QLz4 开发</text>
+      <text class="author-note">{{authorNote}}</text>
+      <input class="wide author-action" type="button" value="微信支持" onclick="showSupport('wechat')" />
+      <input class="wide author-action" type="button" value="支付宝支持" onclick="showSupport('alipay')" />
+      <input class="wide primary author-action" type="button" value="返回菜单" onclick="openMenu" />
+    </div>
+    <div class="panel" if="{{screen === 'support'}}">
+      <text class="title">{{supportTitle}}</text>
+      <text class="subtitle">{{supportHint}}</text>
+      <image class="support-qr" src="{{supportImage}}" />
+      <text class="support-note">自愿支持 · 游戏免费</text>
+      <input class="wide primary" type="button" value="返回作者主页" onclick="showAuthor" />
+    </div>
+    <div class="panel" if="{{screen === 'levels'}}">
+      <text class="title">选择人机关卡</text>
+      <text class="subtitle">由易到难 · 五关均可直接选择</text>
+      <input class="wide" type="button" for="item in levelItems" tid="id" value="{{item.text}}" onclick="chooseLevel(item.id)" />
+      <input class="wide primary" type="button" value="返回菜单" onclick="openMenu" />
+      <text class="small">{{progressText}}</text>
+    </div>
+    <div class="panel" if="{{screen === 'result'}}">
+      <text class="title">{{resultTitle}}</text>
+      <text class="paragraph result-body">{{resultBody}}</text>
+      <input class="wide primary" type="button" value="{{resultAction}}" onclick="continueResult" />
+      <input class="wide" type="button" value="选择人机关卡" onclick="showLevels" />
+      <input class="wide" type="button" value="查看棋局" onclick="resume" />
+      <input class="wide" type="button" value="返回菜单" onclick="openMenu" />
+    </div>
+    <div class="panel" if="{{screen === 'new'}}">
+      <text class="title">开始新局？</text>
+      <text class="paragraph">{{newModeText}}</text>
+      <input class="wide primary" type="button" value="开始新局" onclick="startNew" />
+      <input class="wide" type="button" value="返回菜单" onclick="openMenu" />
+    </div>
+    <div class="panel" if="{{screen === 'rules'}}">
+      <text class="title">{{ruleTitle}}</text>
+      <text class="paragraph rules">{{ruleBody}}</text>
+      <div class="actions">
+        <input class="action" type="button" value="上一页" onclick="prevRule" />
+        <input class="action primary" type="button" value="下一页" onclick="nextRule" />
+        <input class="action" type="button" value="返回" onclick="openMenu" />
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+import storage from '@system.storage'
+import interconnect from '@system.interconnect'
+import brightness from '@system.brightness'
+import {newGame, legalMoves, side, label, squareName, inCheck, play, undo, encode, decode} from '../../common/engine.js'
+import {LEVELS, createOpponentSearch} from '../../common/ai.js'
+
+const SAVE_KEY = 'xiangqi.v1';
+const PIECE_HELP = ['', '帅将：九宫内走一格', '仕士：九宫内斜一格', '相象：田字，不过河', '马：日字，注意马腿', '车：直线，不能越子', '炮：直走，隔一子吃', '兵卒：向前，过河可横走'];
+const RULES = [
+  ['操作 1/5', '红先黑后，每次走一子。\n① 点己方棋子。\n② 点绿点或绿圈落点。\n③ 点“落子”确认。\n点其他己方棋可改选。\n金圈是当前选择，蓝圈是\n上一步；红方始终在下。'],
+  ['走法 2/5', '车：横竖直走，不可越子。\n马：走日字，马腿被挡\n就不能向那个方向跳。\n炮：平时直走不越子；\n吃子必须隔恰好一枚棋。\n兵卒：向前一格，过河后\n可左右走一格，不能后退。'],
+  ['走法 3/5', '帅将：九宫内横竖一格。\n仕士：九宫内斜走一格。\n相象：走田字，不可过河；\n田字中心有子则不能走。\n不能吃自己的棋子。\n两将之间无棋时不能照面。\n软件只显示合法落点。'],
+  ['胜负 4/5', '被将军后，必须立即解将。\n任何一步都不能让己方\n将帅处于被攻击状态。\n轮到一方无合法走法就输，\n包括将死和困毙。\n游戏判胜后停止走子，\n无需实际吃掉将帅。'],
+  ['对局约定 5/5', '人机五关，菜单任选难度。\n胜利后可继续挑战下一关。\n双人黑棋文字朝向对方。\n悔棋、退出续局均可使用。\n同局面同走方三次，或\n连续120步不吃子，判和。\n不作赛事长将长捉裁判。']
+];
+let game, mode = 'ai', selected = -1, pending = -1, targets = [], search = null;
+let aiTimer = null, loadTimer = null, visible = false, alive = false, ready = false;
+let connection = null, debug = false, saving = false, queuedSave = null;
+let aiRunning = false, aiGeneration = 0, checked = false;
+let level = 1, cleared = [];
+let glyphImages = true;
+let splashTimer = null;
+
+export default {
+  private: {
+    screen: 'splash', rows: [], heading: '腕上象棋 · 载入中', hint: '正在读取棋局', confirmText: '先选棋',
+    modeText: '人机 · 入门', moveCount: 0, saveText: '自动保存棋局',
+    debugText: '交互调试：关', newModeText: '', nextMode: 'ai',
+    ruleIndex: 0, ruleTitle: '', ruleBody: '', keepText: '常亮待定',
+    nextLevel: 1, levelItems: [], progressText: '', resultTitle: '', resultBody: '', resultAction: '',
+    supportTitle: '', supportHint: '', supportImage: '',
+    authorNote: '免费向社区所有发烧友开放\n喜欢的话，欢迎自愿支持'
+  },
+  onInit() {
+    alive = true; ready = false; visible = false; saving = false; queuedSave = null;
+    clearTimeout(splashTimer); splashTimer = null; this.screen = 'splash';
+    this.stopAI();
+    game = newGame(); mode = 'ai'; selected = pending = -1; targets = []; debug = false;
+    level = 1; cleared = []; glyphImages = true; this.refreshLevels();
+    // Keep row/cell identities stable: update only the changed native attributes.
+    const rows = [];
+    for (let r = 0; r < 10; r++) {
+      const cells = [];
+      for (let c = 0; c < 9; c++) cells.push({id: r * 9 + c, text: '', cls: '', image: ''});
+      rows.push({id: r, cells: cells});
+    }
+    this.rows = rows;
+    this.paint(true);
+    const finish = (text, failed) => {
+      if (ready || !alive) return;
+      ready = true; clearTimeout(loadTimer); loadTimer = null;
+      if (text) {
+        try { const saved = decode(text); game = saved.game; mode = saved.mode; level = saved.level; cleared = saved.cleared; this.refreshLevels(); this.saveText = '已恢复棋局'; }
+        catch (e) { this.saveText = '存档无法读取，已开新局'; }
+      } else if (failed) this.saveText = '读取失败，本次从新局开始';
+      this.paint(true); this.runAI();
+      if (game.result && this.screen !== 'splash') this.showResult();
+    };
+    loadTimer = setTimeout(() => finish('', true), 4000);
+    try { storage.get({key: SAVE_KEY, default: '', success: data => finish(data, false), fail: () => finish('', true)}); }
+    catch (e) { finish('', true); }
+  },
+  onReady() { visible = true; this.keepScreen(true); this.startSplash(); this.runAI(); },
+  onShow() { visible = true; this.keepScreen(true); this.startSplash(); this.runAI(); },
+  onHide() { visible = false; this.stopAI(); this.finishSplash(); this.keepScreen(false); },
+  onDestroy() {
+    alive = false; visible = false; this.stopAI(); clearTimeout(loadTimer);
+    clearTimeout(splashTimer); splashTimer = null;
+    this.keepScreen(false);
+    if (connection) connection.onmessage = null;
+    connection = null; debug = false;
+  },
+  onBackPress() {
+    if (this.screen === 'splash') return false;
+    if (this.screen === 'support') { this.showAuthor(); return true; }
+    if (this.screen === 'author') { this.openMenu(); return true; }
+    if (this.screen !== 'board') { this.resume(); return true; }
+    if (selected >= 0) { this.cancelSelect(); return true; }
+    return false;
+  },
+  startSplash() {
+    if (!alive || !visible || this.screen !== 'splash' || splashTimer !== null) return;
+    splashTimer = setTimeout(() => this.finishSplash(), 2000);
+  },
+  finishSplash() {
+    clearTimeout(splashTimer); splashTimer = null;
+    if (!alive || this.screen !== 'splash') return;
+    this.screen = 'board';
+    if (ready && game.result) this.showResult();
+    else { this.paint(); this.runAI(); }
+  },
+  keepScreen(on) {
+    try {
+      brightness.setKeepScreenOn({keepScreenOn: on,
+        success: () => { if (alive && visible === on) this.keepText = on ? '常亮' : '已释放'; },
+        fail: () => { if (alive && on && visible) this.keepText = '常亮失败'; }
+      });
+    } catch (e) { if (alive && on) this.keepText = '常亮失败'; }
+  },
+  paint(recheck) {
+    if (!game) return;
+    if (recheck) checked = inCheck(game.board, game.turn);
+    const last = game.moves[game.moves.length - 1];
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const id = r * 9 + c, p = game.board[id], legal = targets.indexOf(id) >= 0;
+        let cls = p ? (p > 0 ? 'piece red' : 'piece black') : 'piece empty';
+        if (last && (id === last.from || id === last.to)) cls += ' last';
+        if (legal) cls += ' legal';
+        if (id === selected || id === pending) cls += ' selected';
+        const cell = this.rows[r].cells[c], text = p ? label(p) : (legal ? '·' : '');
+        // Pre-rendered glyphs avoid native text transforms, which can hide the piece.
+        const image = p < 0 && mode === 'local' && glyphImages ? '/common/black-' + (-p) + '.png' : '';
+        if (cell.text !== text) cell.text = text;
+        if (cell.cls !== cls) cell.cls = cls;
+        if (cell.image !== image) cell.image = image;
+      }
+    }
+    this.moveCount = game.moves.length;
+    this.modeText = mode === 'ai' ? '人机·第' + level + '关' : '双人轮流';
+    const winner = game.result === 'red' ? '红方胜' : game.result === 'black' ? '黑方胜' : '和棋';
+    this.heading = !ready ? '腕上象棋 · 载入中' : game.result ? winner + ' · 菜单可开新局' :
+      (game.turn === 1 ? '红方走' : mode === 'ai' ? '第' + level + '关思考中' : '黑方走') + (checked ? ' · 将军！' : ' · 第' + (Math.floor(game.moves.length / 2) + 1) + '回合');
+    this.hint = !ready ? '正在读取棋局' : pending >= 0 ? label(game.board[selected]) + ' ' + squareName(selected) + ' → ' + squareName(pending) + '  确认？' :
+      selected >= 0 ? PIECE_HELP[Math.abs(game.board[selected])] : game.result ? '可在菜单悔棋或开始新局' : '点棋子 → 点落点 → 确认';
+    this.confirmText = pending >= 0 ? '落子' : '先选棋';
+  },
+  glyphError() { glyphImages = false; this.paint(); },
+  select(id) {
+    // A real touch confirms foreground visibility even if a lifecycle notification was missed.
+    if (!visible) { visible = true; this.keepScreen(true); }
+    if (ready && mode === 'ai' && game.turn === -1) { this.runAI(); return; }
+    if (!ready || game.result || (mode === 'ai' && game.turn === -1)) return;
+    if (side(game.board[id]) === game.turn) {
+      selected = id; pending = -1;
+      targets = legalMoves(game.board, game.turn, id).map(m => m.to);
+      this.paint();
+      if (!targets.length) this.hint = '这枚棋子暂无合法走法';
+    } else if (targets.indexOf(id) >= 0) { pending = id; this.paint(); }
+  },
+  confirmMove() {
+    if (!ready || pending < 0 || (mode === 'ai' && game.turn === -1)) return;
+    if (play(game, selected, pending)) {
+      visible = true;
+      this.cancelSelect(true); this.afterMove();
+    }
+  },
+  cancelSelect(recheck) { selected = pending = -1; targets = []; this.paint(recheck === true); },
+  openMenu() { this.stopAI(); this.cancelSelect(); this.screen = 'menu'; },
+  showAuthor() { this.stopAI(); this.screen = 'author'; },
+  showSupport(channel) {
+    if (channel !== 'wechat' && channel !== 'alipay') return;
+    this.stopAI();
+    this.supportTitle = channel === 'wechat' ? '微信支持' : '支付宝支持';
+    this.supportHint = channel === 'wechat' ? '请用微信扫一扫' : '请用支付宝扫一扫';
+    this.supportImage = '/common/support-' + channel + '.png';
+    this.screen = 'support';
+  },
+  resume() { this.screen = 'board'; this.paint(); this.runAI(); },
+  refreshLevels() {
+    this.levelItems = LEVELS.map(item => ({id:item.id,text:item.id + ' · ' + item.name + (cleared.indexOf(item.id)>=0?'  ✓ 已通关':'')}));
+    this.progressText = '已通关 ' + cleared.length + ' / 5';
+  },
+  showLevels() { this.stopAI(); this.refreshLevels(); this.screen = 'levels'; },
+  chooseLevel(id) {
+    if (!Number.isInteger(id) || id < 1 || id > 5) return;
+    this.askNew('ai', id);
+  },
+  askNew(nextMode, nextLevel) {
+    if (!ready) return;
+    this.nextMode = nextMode;
+    this.nextLevel = nextLevel || level;
+    this.newModeText = '新局会替换当前棋局。\n通关记录会保留。\n' + (nextMode === 'ai' ?
+      '第' + this.nextLevel + '关 · ' + LEVELS[this.nextLevel-1].name + '\n' + LEVELS[this.nextLevel-1].detail + '\n你执红，先走。' : '双人轮流，红方先走。\n黑棋文字朝向对方。');
+    this.screen = 'new';
+  },
+  startNew() {
+    this.stopAI(); game = newGame(); mode = this.nextMode; level = this.nextLevel;
+    this.cancelSelect(true); this.saveGame(); this.resume(); this.sendDebug('new');
+  },
+  afterMove() {
+    if (game.result) this.showResult();
+    else this.runAI();
+    this.saveGame(); this.sendDebug('move');
+  },
+  showResult() {
+    this.stopAI();
+    if (mode === 'ai' && game.result === 'red') {
+      if (cleared.indexOf(level)<0) cleared.push(level);
+      cleared.sort((a,b)=>a-b); this.refreshLevels();
+      this.resultTitle = '第' + level + '关通关！';
+      this.resultBody = level < 5 ? '你赢了这一局。\n下一关：' + LEVELS[level].name + '\n也可从菜单自由选关。' :
+        '你已击败最高难度！\n' + (cleared.length === 5 ? '五关全部完成。' : '可选其他关卡继续挑战。');
+      this.resultAction = level < 5 ? '挑战第' + (level+1) + '关' : '再战第五关';
+    } else {
+      this.resultTitle = game.result === 'draw' ? '本局和棋' : game.result === 'red' ? '红方胜' : '黑方胜';
+      this.resultBody = mode === 'ai' ? '第' + level + '关 · ' + LEVELS[level-1].name + '\n可重试本关，或选择其他关。' : '本局结束，可开始新局。';
+      this.resultAction = mode === 'ai' ? '重试本关' : '双人新局';
+    }
+    this.screen = 'result';
+  },
+  continueResult() {
+    this.nextMode = mode;
+    this.nextLevel = mode === 'ai' && game.result === 'red' ? Math.min(5,level+1) : level;
+    this.startNew();
+  },
+  takeBack() {
+    if (!ready) return;
+    this.stopAI();
+    if (undo(game) && mode === 'ai' && game.turn === -1) undo(game);
+    this.cancelSelect(true); this.saveGame(); this.resume(); this.sendDebug('undo');
+  },
+  stopAI() { clearTimeout(aiTimer); aiTimer = null; if (search && search.cancel) search.cancel(); search = null; aiRunning = false; aiGeneration++; },
+  runAI() {
+    if (!alive || !ready || !visible || this.screen !== 'board' || mode !== 'ai' || game.turn !== -1 || game.result || aiRunning) return;
+    aiRunning = true;
+    const generation = ++aiGeneration;
+    const finishMove = move => {
+      aiRunning = false; search = null; aiTimer = null;
+      if (move && play(game, move.from, move.to)) {
+        this.paint(true); this.afterMove();
+      } else this.hint = '电脑未能落子，请点棋盘重试';
+    };
+    const step = () => {
+      if (generation !== aiGeneration || !alive || !visible || this.screen !== 'board') return;
+      aiTimer = null;
+      let result;
+      try {
+        if (!search) search = createOpponentSearch(game.board, game.turn, {level:level, history:game.keys, quiet:game.quiet});
+        result = search.step();
+      } catch (e) {
+        console.log('[xiangqi] AI fallback: ' + String(e));
+        // Do not leave the game indefinitely showing "thinking" after a search error.
+        const moves = legalMoves(game.board, game.turn, undefined, true);
+        finishMove(moves[0]);
+        return;
+      }
+      if (result.done) finishMove(result.move);
+      else aiTimer = setTimeout(step, 1);
+    };
+    aiTimer = setTimeout(step, 60);
+  },
+  saveGame() {
+    if (!ready) return;
+    queuedSave = encode(game, mode, {level:level,cleared:cleared});
+    this.flushSave();
+  },
+  flushSave() {
+    if (saving || queuedSave === null) return;
+    const value = queuedSave; queuedSave = null; saving = true;
+    const done = ok => {
+      saving = false;
+      if (alive) this.saveText = ok ? '棋局已自动保存' : '保存失败，请勿退出';
+      if (queuedSave !== null) this.flushSave();
+    };
+    try { storage.set({key: SAVE_KEY, value: value, success: () => done(true), fail: () => done(false)}); }
+    catch (e) { done(false); }
+  },
+  showRules() { this.stopAI(); this.ruleIndex = 0; this.updateRule(); this.screen = 'rules'; },
+  updateRule() { this.ruleTitle = RULES[this.ruleIndex][0]; this.ruleBody = RULES[this.ruleIndex][1]; },
+  prevRule() { this.ruleIndex = (this.ruleIndex + RULES.length - 1) % RULES.length; this.updateRule(); },
+  nextRule() { this.ruleIndex = (this.ruleIndex + 1) % RULES.length; this.updateRule(); },
+  toggleDebug() {
+    if (debug) {
+      debug = false; this.debugText = '交互调试：关';
+      if (connection) connection.onmessage = null;
+      return;
+    }
+    try {
+      connection = interconnect.instance();
+      connection.onmessage = message => {
+        if (!debug || !alive) return;
+        try {
+          let data = message && message.data !== undefined ? message.data : message;
+          if (typeof data === 'string') { if (data.length > 4096) return; data = JSON.parse(data); }
+          if (data && (data.cmd === 'ping' || data.cmd === 'state')) this.sendDebug(data.cmd);
+        } catch (e) { console.log('[xiangqi] invalid debug message'); }
+      };
+      debug = true; this.debugText = '交互调试：开'; this.sendDebug('ready');
+    } catch (e) { debug = false; this.debugText = '交互调试：不可用'; }
+  },
+  sendDebug(event) {
+    if (!debug || !connection || !ready) return;
+    const data = {app: 'com.bandgame.xiangqi', version: '1.0.5', event: event, mode: mode, level:level, cleared:cleared.slice(),
+      turn: game.turn === 1 ? 'red' : 'black', moves: game.moves.length, result: game.result, board: game.board.slice()};
+    try { connection.send({data: data, fail: () => console.log('[xiangqi] debug send failed')}); }
+    catch (e) { console.log('[xiangqi] debug unavailable'); }
+  }
+}
+</script>
+<style>
+.page { width:336px; height:480px; background-color:#121b19; flex-direction:column; align-items:center; }
+.splash { width:336px; height:480px; flex-direction:column; align-items:center; justify-content:center; }
+.splash-avatar { width:144px; height:144px; }
+.splash-title { width:300px; height:44px; margin-top:20px; font-size:30px; color:#f0debd; text-align:center; }
+.splash-credit { width:300px; height:34px; font-size:24px; color:#bd9355; text-align:center; }
+.splash-note { width:300px; height:28px; margin-top:8px; font-size:18px; color:#a7bbb0; text-align:center; }
+.splash-fade { animation-name:splashFade; animation-duration:2000ms; animation-timing-function:ease-in-out; animation-iteration-count:1; }
+@keyframes splashFade {
+  0% { opacity:0; }
+  30% { opacity:1; }
+  75% { opacity:1; }
+  100% { opacity:0; }
+}
+.board-view { width:336px; height:480px; flex-direction:column; align-items:center; padding-top:12px; }
+.heading { width:300px; height:28px; font-size:20px; color:#f0debd; text-align:center; }
+.board { width:306px; height:340px; flex-direction:column; background-image:url('/common/board.png'); }
+.rank { width:306px; height:34px; flex-direction:row; }
+.piece { width:32px; height:32px; margin:1px; border-radius:16px; border-width:2px; border-color:#94764b; background-color:#f7e4bc; font-size:25px; text-align:center; }
+.red { color:#a52022; }
+.black { color:#182728; }
+.empty { background-color:transparent; border-color:transparent; color:#17674c; font-size:32px; }
+.last { border-color:#447aa0; }
+.legal { border-color:#268562; }
+.selected { border-color:#e49b19; background-color:#ffda78; }
+.hint { width:310px; height:30px; font-size:17px; color:#d6e0d9; text-align:center; }
+.actions { width:306px; height:44px; flex-direction:row; justify-content:space-between; }
+.action { width:98px; height:42px; border-radius:12px; background-color:#2b3c37; color:#f7ead0; font-size:20px; }
+.primary { background-color:#bd9355; color:#141d19; }
+.panel { width:336px; height:480px; padding-top:24px; padding-left:18px; padding-right:18px; flex-direction:column; align-items:center; }
+.title { width:300px; height:36px; font-size:26px; color:#f0debd; text-align:center; }
+.subtitle { width:300px; height:28px; font-size:18px; color:#a7bbb0; text-align:center; }
+.wide { width:288px; height:46px; margin-top:8px; border-radius:14px; background-color:#2b3c37; color:#f7ead0; font-size:21px; }
+.wide.primary { background-color:#bd9355; color:#141d19; }
+.menu-item { height:40px; margin-top:6px; }
+.author-panel { padding-top:20px; }
+.author-avatar { width:72px; height:72px; margin-top:8px; }
+.author-name { width:300px; height:32px; font-size:22px; color:#f0debd; text-align:center; }
+.author-note { width:300px; height:48px; font-size:18px; line-height:24px; color:#a7bbb0; text-align:center; }
+.author-action { height:40px; }
+.support-qr { width:294px; height:294px; margin-top:8px; }
+.support-note { width:300px; height:24px; font-size:17px; color:#a7bbb0; text-align:center; }
+.small { width:290px; height:28px; font-size:16px; text-align:center; color:#a7bbb0; margin-top:8px; }
+.paragraph { width:294px; height:200px; font-size:21px; line-height:32px; color:#e1e8df; margin-top:20px; }
+.rules { height:300px; font-size:21px; line-height:34px; }
+.result-body { height:136px; margin-top:12px; }
+</style>
