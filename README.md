@@ -1,5 +1,7 @@
 # 腕上象棋 1.0.6
 
+作者：我，QLz4。这是我为小米手环 10 Pro 做的中国象棋小游戏，欢迎所有用户安装游玩、反馈问题。本项目以 MIT 协议开源，详见 LICENSE。
+
 为小米手环 10 Pro（M2551B1、系统 3.101.043）制作的 Vela 快应用，设计分辨率为 336×480。完整 9×10 棋盘，32 枚棋子；支持五关人机、自由选关、双人轮流、合法走法提示、落子确认、悔棋、自动续局和内置规则。
 
 ## 安装和启动
@@ -11,9 +13,9 @@
 1. 保持 AstroBox 显示手环已连接。
 2. 将这个 RPK 导入 AstroBox 的本地安装功能，核对名称“腕上象棋”、包名 `com.bandgame.xiangqi` 后安装。
 3. 在手环应用列表打开“腕上象棋”。也可用 Debug Helper 选择这个包名，启动页面 `pages/index/index`。
-4. 默认人机第一关，你执红，红先。“菜单 → 人机关卡 · 选择难度”可任选五关，也可切换双人新局。
+4. 默认人机第一关，玩家执红，红先。“菜单 → 人机关卡 · 选择难度”可任选五关，也可切换双人新局。
 
-这是官方 aiot-toolkit 2.0.5 在 production 模式下生成、使用项目专用签名的 release 包。首次由旧 debug 包切换到此签名，可能无法直接覆盖安装；如果卸载重装，旧存档可能丢失。后续必须保持这对正式签名。真实安装及运行状态见 `验收记录.md`；打包成功和电脑预览不能代替真机验收。AstroBox 若提示不兼容、签名错误或安装失败，请保留原始错误再排查，勿重置手环。
+这是官方 aiot-toolkit 2.0.5 在 production 模式下生成、使用项目专用签名的 release 包。首次由旧 debug 包切换到此签名，可能无法直接覆盖安装；如果卸载重装，旧存档可能丢失。后续必须保持这对正式签名。真实安装及运行状态见 `验收记录.md`；打包成功和电脑预览不能代替真机验收。AstroBox 若提示不兼容、签名错误或安装失败，建议保留原始错误信息再排查，不要重置手环。
 
 ## 操作
 
@@ -73,14 +75,14 @@
 ## 构建与预览
 
 ```powershell
-cd 'F:\小米手环项目\wrist-xiangqi'
+cd wrist-xiangqi
 npm ci
 npm test
 npm run release
 npm run preview
 ```
 
-需要 Node.js 和 npm；依赖版本由 `package-lock.json` 锁定。首次构建可能在用户目录创建 `.vela`。素材已包含，无需生成；修改后可用装有 Pillow 的 Python 运行 `tools/make-assets.py`。
+需要 Node.js 和 npm；依赖版本由 `package-lock.json` 锁定。首次构建可能在电脑的用户目录创建 `.vela`。素材已包含，无需生成；修改后可用装有 Pillow 的 Python 运行 `tools/make-assets.py`。
 
 - `src/common/engine.js`：纯 JavaScript 规则、存档和轻量估分。
 - `src/common/ai.js`：关卡配置、第一至四关原有搜索及第五关路由。
@@ -100,7 +102,7 @@ npm run preview
 
 ## 作者与自愿支持
 
-作者：QLz4 开发。作者头像使用用户提供原图，裁切为 144×144 PNG，在屏幕上显示为 72×72。两张收款码保留原码及中心图片，提取为 294×294 PNG，四周保留至少四个模块的白边；码点为整数像素。转换后与浏览器实际截图均已离线解码，内容与原图一致，记录在 `evidence/author-qr-check.json`。
+作者：我，QLz4。作者头像使用我提供的原图，裁切为 144×144 PNG，在屏幕上显示为 72×72。两张收款码保留原码及中心图片，提取为 294×294 PNG，四周保留至少四个模块的白边；码点为整数像素。转换后与浏览器实际截图均已离线解码，内容与原图一致，记录在 `evidence/author-qr-check.json`。
 
 游戏不要求付款，也没有支付解锁功能；页面仅展示本地图片。真机扫码效果受屏幕和手机对焦影响，需要安装后验证。
 
@@ -110,18 +112,18 @@ npm run preview
 
 启动页复用作者头像，以原生 CSS opacity 关键帧完成 600ms 淡入、900ms 停留、500ms 淡出；定时器在 2000ms 后切入棋局。遵循官方 [动画样式](https://iot.mi.com/vela/quickapp/zh/components/general/animation-style.html)，不使用 transform。离开或销毁时取消定时器，后台返回不重播。实际设备动画流畅度需真机确认。
 
-项目备份采用 GitHub 私有仓库；社区免费使用不等于源码公开或授予开源许可。仓库包含源码、素材、测试、预览和当前 RPK；依赖、构建缓存、本地签名密钥不提交。安装仍由作者手动操作。
+项目源码见本仓库；依赖、构建缓存、本地签名密钥不提交。安装仍由我手动操作。
 
 ## 当前 release 构建命令
 
 ```powershell
-cd 'F:\小米手环项目\wrist-xiangqi'
+cd wrist-xiangqi
 npm test
 npm run release
 ```
 
-本机签名已经准备好。换电脑先 `npm ci` 并恢复原来的 `sign/release` 目录，再构建。`npm run build` 同样默认输出 release；仅开发调试才使用 `npm run build:debug`。初次创建新项目签名的命令是 `npm run signing:init`，不要用它替代已发布应用的原签名。源码私有仓库 [QLz4/wrist-xiangqi](https://github.com/QLz4/wrist-xiangqi) 不包含签名私钥。
+我本机的签名已经准备好。如需在另一台电脑构建，请先 `npm ci` 并恢复原来的 `sign/release` 目录，再构建。`npm run build` 同样默认输出 release；仅开发调试才使用 `npm run build:debug`。初次创建新项目签名的命令是 `npm run signing:init`，不要用它替代已发布应用的原签名。本仓库不包含签名私钥。
 
-本轮 46 项测试通过；前四关与旧版快照回归一致。第五关桌面对比与手环性能限制见 ENGINE-NOTES。release 包交由作者手动安装测试和上架；打包成功不是上架审核通过。
+本轮 46 项测试通过；前四关与旧版快照回归一致。第五关桌面对比与手环性能限制见 ENGINE-NOTES。release 包由我手动安装测试和上架；打包成功不是上架审核通过。
 
 宣传素材位于 `marketing/`：3 张实际模板的预览截图，2 张内置 image_gen 生成的概念海报，提示词另有记录。
