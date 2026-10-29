@@ -4,7 +4,7 @@
 
 ## 安装和启动
 
-安装包：`dist/com.bandgame.xiangqi.release.1.0.6.rpk`。由你手动安装；本次未操作 AstroBox。
+安装包：`dist/com.bandgame.xiangqi.release.1.0.6.rpk`
 
 本次只增强第五关 AI：独立实现 XQWLight 风格的主变例搜索、局面缓存和走法排序，第一至四关保持原样。默认构建改为正式 release 模式，并使用项目专用签名。具体算法、性能边界、对比记录与命令见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。
 
