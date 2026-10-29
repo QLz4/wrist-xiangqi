@@ -2,7 +2,7 @@
 
 ## 架构来源与范围
 
-用户要求按 XQWLight 的算法架构加强第五关。上游项目 [xqbase/xqwlight](https://github.com/xqbase/xqwlight) 标明 GPL-2.0。本项目没有复制、移植或打包上游代码、棋子位置表、开局库；`src/common/master-ai.js` 是在本项目规则引擎上独立编写的经典象棋搜索实现，不称为官方 XQWLight 移植版，也不宣称与原版棋力相同。
+我按 XQWLight 的算法架构加强第五关。上游项目 [xqbase/xqwlight](https://github.com/xqbase/xqwlight) 标明 GPL-2.0。本项目没有复制、移植或打包上游代码、棋子位置表、开局库；`src/common/master-ai.js` 是在本项目规则引擎上独立编写的经典象棋搜索实现，不称为官方 XQWLight 移植版，也不宣称与原版棋力相同。
 
 采用的通用搜索技术：迭代加深、PVS 主变例搜索、alpha-beta 剪枝、双 32 位 Zobrist 校验的置换表、杀手走法与历史启发排序、吃子静态搜索、应将延伸、将杀距离评分。评分按本项目棋盘几何计算位置、兵卒推进、马腿和车的活动度；没有固定走棋脚本。
 
@@ -25,19 +25,19 @@
 
 ## Release 打包
 
-本机已初始化项目专用 RSA 签名，保存在 `sign/release/private.pem` 与 `sign/release/certificate.pem`，已通过 Git 忽略规则排除。后续更新必须沿用这对文件，请自行安全备份；源码 ZIP 和 GitHub 私有仓库均不包含私钥。
+我本机已初始化项目专用 RSA 签名，保存在 `sign/release/private.pem` 与 `sign/release/certificate.pem`，已通过 Git 忽略规则排除。后续更新必须沿用这对文件，请妥善备份；源码 ZIP 和本仓库均不包含私钥。
 
 ```powershell
-cd 'F:\小米手环项目\wrist-xiangqi'
+cd wrist-xiangqi
 npm ci
 npm test
 npm run release
 ```
 
-`npm run release` 先检查签名，再执行 `aiot release --drop-console true`。`npm run build` 也默认转为 release。仅需要开发包时才用 `npm run build:debug`。`npm run signing:init` 仅用于首次初始化全新的签名；已有签名时只校验、不覆盖。换电脑请恢复原签名，不要重新生成身份。
+`npm run release` 先检查签名，再执行 `aiot release --drop-console true`。`npm run build` 也默认转为 release。仅需要开发包时才用 `npm run build:debug`。`npm run signing:init` 仅用于首次初始化全新的签名；已有签名时只校验、不覆盖。换电脑时请恢复原签名，不要重新生成身份。
 
 产物：`dist/com.bandgame.xiangqi.release.1.0.6.rpk`。发布模式已由编译日志中的 `mode: production` 确认，并非改名 debug 包。
 
-此前版本使用工具自带 debug 签名，新 release 签名不同。首次切换时设备可能拒绝直接覆盖；若需要卸载再安装，旧存档可能丢失。不要为了覆盖旧开发包而使用公开的 debug 私钥作为正式签名。Release 构建成功不等于平台审核通过；本轮由用户手动真机测试并上架，未替用户执行安装或提交审核。
+此前版本使用工具自带 debug 签名，新 release 签名不同。首次切换时设备可能拒绝直接覆盖；若需要卸载再安装，旧存档可能丢失。不要为了覆盖旧开发包而使用公开的 debug 私钥作为正式签名。Release 构建成功不等于平台审核通过；本轮由我手动真机测试并上架。
 
 官方构建命令参考：[AIoT-toolkit](https://iot.mi.com/vela/quickapp/zh/tools/toolkit/start.html)。
